@@ -23,6 +23,7 @@ struct LdsCar {
 // immediate motion control
 	void stop();
 	void move(int A, int B, int C);
+	void setMaxSpeed(unsigned int speed);  // default is 100
 };
 
 #ifdef LDSCAR_IMPLEMENTATION
@@ -62,9 +63,12 @@ int LdsCar::__send_ctrl_8byte(const unsigned char* data) {
 	memcpy(ctrl_buf+2, data, 8);  // copy 8 byte control
 	lock.lock();
 	assert(com->write(ctrl_buf, 10) == 10 && "write failed");
+	com->flush();
 	lock.unlock();
 	return 0;
 }
+
+#define a2u8(x) ((unsigned char)((x)&0xFF))
 
 void LdsCar::stop() {
 	const unsigned char msg[8] = {0x77, 0, 0, 0, 0, 0, 0, 0};
@@ -72,7 +76,13 @@ void LdsCar::stop() {
 }
 
 void LdsCar::move(int A, int B, int C) {
-	const unsigned char msg[8] = {0x66, (A>>8)&0xFF, A&0xFF, (B>>8)&0xFF, B&0xFF, (C>>8)&0xFF, C&0xFF, 0};
+	const unsigned char msg[8] = {0x66, a2u8(A>>8), a2u8(A), a2u8(B>>8), a2u8(B), a2u8(C>>8), a2u8(C), 0};
+	__send_ctrl_8byte(msg);
+}
+
+void LdsCar::setMaxSpeed(unsigned int speed) {
+	assert(speed <= 1000 && "speed too large, may slipper");
+	const unsigned char msg[8] = {0x88, a2u8(speed>>8), a2u8(speed), 0, 0, 0, 0, 0};
 	__send_ctrl_8byte(msg);
 }
 

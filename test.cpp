@@ -10,7 +10,11 @@ int main(int argc, char** argv) {
 	}
 
 	ldscar.open(argv[1]);
-	ldscar.move(30000, 0, 0);
+	ldscar.setMaxSpeed(200);
+	for (int i=0; i<1; ++i) {
+		ldscar.move(30000, -30000, 30000);
+	}
+	// ldscar.stop();
 	ldscar.close();
 
 }

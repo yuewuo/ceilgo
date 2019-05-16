@@ -2,8 +2,8 @@
 #define __CONTROL_H
 #include "sys.h"
   /**************************************************************************
-×÷Õß£ºÆ½ºâÐ¡³µÖ®¼Ò
-ÎÒµÄÌÔ±¦Ð¡µê£ºhttp://shop114407458.taobao.com/
+ï¿½ï¿½ï¿½ß£ï¿½Æ½ï¿½ï¿½Ð¡ï¿½ï¿½Ö®ï¿½ï¿½
+ï¿½Òµï¿½ï¿½Ô±ï¿½Ð¡ï¿½ê£ºhttp://shop114407458.taobao.com/
 **************************************************************************/
 #define PI 3.14159265
 #define ZHONGZHI 0 
@@ -16,6 +16,7 @@ void Kinematic_Analysis2(float Vx,float Vy,float Vz);
 void Key(void);
 void Xianfu_Pwm(int amplitude);
 void Xianfu_Velocity(int amplitude_A,int amplitude_B,int amplitude_C);
+void Xianfu_Velocity_EqualRatio(int amplitude);
 u8 Turn_Off( int voltage);
 u32 myabs(long int a);
 int Incremental_PI_A (int Encoder,int Target);

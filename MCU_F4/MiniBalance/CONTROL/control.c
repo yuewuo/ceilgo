@@ -52,7 +52,7 @@ int EXTI15_10_IRQHandler(void)
 			 }
 		  if(Flag_Target==1)                                                  //5ms读取一次陀螺仪和加速度计的值
 			{
-					if(Usart_Flag==0&&PS2_ON_Flag==0&&Usart_ON_Flag==1)  memcpy(rxbuf,Urxbuf,8*sizeof(u8));	//如果解锁了串口控制标志位，进入串口控制模式
+					// if(Usart_Flag==0&&PS2_ON_Flag==0&&Usart_ON_Flag==1)  memcpy(rxbuf,Urxbuf,8*sizeof(u8));	//如果解锁了串口控制标志位，进入串口控制模式
 					Read_DMP();                                                           //===更新姿态		
 			  	Key();//扫描按键变化	
 			return 0;	                                               
@@ -72,18 +72,19 @@ int EXTI15_10_IRQHandler(void)
 			if(++Voltage_Count==100) Voltage=Voltage_All/100,Voltage_All=0,Voltage_Count=0;//求平均值 获取电池电压	   
       if(PS2_KEY==4)PS2_ON_Flag=1,CAN_ON_Flag=0,Usart_ON_Flag=0;						
 		  // if(CAN_ON_Flag==1||Usart_ON_Flag==1||PS2_ON_Flag==1) CAN_N_Usart_Control();       //接到串口或者CAN遥控解锁指令之后，使能CAN和串口控制输入
-			if(RC_Velocity>0&&RC_Velocity<25)  RC_Velocity=25;                //避免电机进入低速非线性区
+			// if(RC_Velocity>0&&RC_Velocity<25)  RC_Velocity=25;                //避免电机进入低速非线性区
+			if(RC_Velocity<25)  RC_Velocity=25;
 		  if(Turn_Off(Voltage)==0)               //===如果电池电压不存在异常
 		 { 			 
 		  if(Run_Flag==0)//速度模式
 			{		
 				if(CAN_ON_Flag==0&&Usart_ON_Flag==0&&PS2_ON_Flag==0)  Get_RC(Run_Flag);   //===串口和CAN控制都未使能，则接收蓝牙遥控指
 				// Motor_A=Incremental_PI_A(Encoder_A,Target_A);                        			//===速度闭环控制计算电机A最终PWM
-				Motor_A=Incremental_PI_A(Encoder_A,Target_A*20);
+				Motor_A=Incremental_PI_A(Encoder_A,Target_A);
 				// Motor_B=Incremental_PI_B(Encoder_B,Target_B);                         		//===速度闭环控制计算电机B最终PWM
-				Motor_B=Incremental_PI_B(Encoder_B,Target_B*20);
+				Motor_B=Incremental_PI_B(Encoder_B,Target_B);
 				// Motor_C=Incremental_PI_C(Encoder_C,Target_C);                         		//===速度闭环控制计算电机C最终PWM
-				Motor_C=Incremental_PI_C(Encoder_C,Target_C*20);
+				Motor_C=Incremental_PI_C(Encoder_C,Target_C);
 			}
 			 else//位置模式
 			{
@@ -95,16 +96,18 @@ int EXTI15_10_IRQHandler(void)
 					Motor_A=Position_PID_A(Position_A,Target_A)>>8;//位置闭环控制，计算电机A速度内环的输入量
 					Motor_B=Position_PID_B(Position_B,Target_B)>>8;//位置闭环控制，计算电机B速度内环的输入量
 					Motor_C=Position_PID_C(Position_C,Target_C)>>8;//位置闭环控制，计算电机C速度内环的输入量
+					// printf("Motor A: %d, B: %d, C: %d\n", Motor_A, Motor_B, Motor_C);
 					
-					if(rxbuf[0]!=2)  Count_Velocity();   //这是调节位置控制过程的速度大小
-					else 	
-					Xianfu_Velocity(RC_Velocity,RC_Velocity,RC_Velocity); 
+					// if(rxbuf[0]!=2)  Count_Velocity();   //这是调节位置控制过程的速度大小
+					// else 	
+					Xianfu_Velocity_EqualRatio(RC_Velocity);
+					// Xianfu_Velocity(RC_Velocity,RC_Velocity,RC_Velocity);   // TODO velocity ratio not correct
 					Show_Data_Mb=Motor_B;
 					Motor_A=Incremental_PI_A(Encoder_A,-Motor_A);         //===速度闭环控制计算电机A最终PWM
 					Motor_B=Incremental_PI_B(Encoder_B,-Motor_B);         //===速度闭环控制计算电机B最终PWM
 					Motor_C=Incremental_PI_C(Encoder_C,-Motor_C);         //===速度闭环控制计算电机C最终PWM
 			 }	 
-			 Xianfu_Pwm(6900);                     											//===PWM限幅
+			 Xianfu_Pwm(7199);                     											//===PWM限幅
 			 Set_Pwm(Motor_A*84/72,Motor_B*84/72,Motor_C*84/72);     		//===赋值给PWM寄存器  
 		 }
 		// printf("A: %d, B: %d, C: %d\n", Motor_A, Motor_B, Motor_C);
@@ -120,16 +123,16 @@ int EXTI15_10_IRQHandler(void)
 **************************************************************************/
 void Set_Pwm(int motor_a,int motor_b,int motor_c)
 {
-	printf("A: %d, B: %d, C: %d\n", motor_a, motor_b, motor_c);
-	    int siqu=0;
-    	if(motor_a>0)			PWMA=motor_a+siqu, INA=0;
-			else  	            PWMA=7200+motor_a-siqu,INA=1;
+	// printf("A: %d, B: %d, C: %d\n", motor_a, motor_b, motor_c);
+	    const int siqua=0, siqub=0, siquc=0;
+    	if(motor_a>0)			PWMA=motor_a+siqua, INA=0;
+			else  	            PWMA=8400+motor_a-siqua,INA=1;
 		
-		  if(motor_b>0)			PWMB=7200-motor_b-siqu,INB=1;
-			else 	            PWMB=-motor_b+siqu,INB=0;
+		  if(motor_b>0)			PWMB=8400-motor_b-siqub,INB=1;
+			else 	            PWMB=-motor_b+siqub,INB=0;
 	
-	    if(motor_c>0)			PWMC=motor_c+siqu,INC=0;
-			else 	            PWMC=7200+motor_c-siqu,INC=1;
+	    if(motor_c>0)			PWMC=motor_c+siquc,INC=0;
+			else 	            PWMC=8400+motor_c-siquc,INC=1;
 }
 
 /**************************************************************************
@@ -159,6 +162,21 @@ void Xianfu_Velocity(int amplitude_A,int amplitude_B,int amplitude_C)
 		if(Motor_B>amplitude_B)  Motor_B=amplitude_B;		//位置控制模式中，B电机的运行速度
 	  if(Motor_C<-amplitude_C) Motor_C=-amplitude_C;	//位置控制模式中，C电机的运行速度
 		if(Motor_C>amplitude_C)  Motor_C=amplitude_C;		//位置控制模式中，C电机的运行速度
+}
+void Xianfu_Velocity_EqualRatio(int amplitude) {
+	if (Motor_A<-amplitude || Motor_A>amplitude || Motor_B<-amplitude || Motor_B>amplitude || Motor_B<-amplitude || Motor_B>amplitude) {
+		float rA = fabs(Motor_A/(float)amplitude);
+		float rB = fabs(Motor_B/(float)amplitude);
+		float rC = fabs(Motor_C/(float)amplitude);
+		float maxratio = rA;
+		if (rB > maxratio) maxratio = rB;
+		if (rC > maxratio) maxratio = rC;
+		if (maxratio > 1) {  // of course!
+			Motor_A = Motor_A / maxratio;
+			Motor_B = Motor_B / maxratio;
+			Motor_C = Motor_C / maxratio;
+		}
+	}
 }
 /**************************************************************************
 函数功能：按键修改小车运行状态 
@@ -224,8 +242,8 @@ int Incremental_PI_A (int Encoder,int Target)
 	 static int Bias,Pwm,Last_bias;
 	 Bias=Encoder-Target;                //计算偏差
 	 Pwm+=Velocity_KP*(Bias-Last_bias)+Velocity_KI*Bias;   //增量式PI控制器
-	 if(Pwm>7200)Pwm=7200;
-	 if(Pwm<-7200)Pwm=-7200;
+	 if(Pwm>8400)Pwm=8400;
+	 if(Pwm<-8400)Pwm=-8400;
 	 Last_bias=Bias;	                   //保存上一次偏差 
 	 return Pwm;                         //增量输出
 }
@@ -234,8 +252,8 @@ int Incremental_PI_B (int Encoder,int Target)
 	 static int Bias,Pwm,Last_bias;
 	 Bias=Encoder-Target;                //计算偏差
 	 Pwm+=Velocity_KP*(Bias-Last_bias)+Velocity_KI*Bias;   //增量式PI控制器
-	 if(Pwm>7200)Pwm=7200;
-	 if(Pwm<-7200)Pwm=-7200;
+	 if(Pwm>8400)Pwm=8400;
+	 if(Pwm<-8400)Pwm=-8400;
 	 Last_bias=Bias;	                   //保存上一次偏差 
 	 return Pwm;                         //增量输出
 }
@@ -244,8 +262,8 @@ int Incremental_PI_C (int Encoder,int Target)
 	 static int Bias,Pwm,Last_bias;
 	 Bias=Encoder-Target;                                  //计算偏差
 	 Pwm+=Velocity_KP*(Bias-Last_bias)+Velocity_KI*Bias;   //增量式PI控制器
-	 if(Pwm>7200)Pwm=7200;
-	 if(Pwm<-7200)Pwm=-7200;
+	 if(Pwm>8400)Pwm=8400;
+	 if(Pwm<-8400)Pwm=-8400;
 	 Last_bias=Bias;	                   //保存上一次偏差 
 	 return Pwm;                         //增量输出
 }
@@ -265,8 +283,8 @@ int Position_PID_A (int Encoder,int Target)
 	 static float Bias,Pwm,Integral_bias,Last_Bias;
 	 Bias=Encoder-Target;                                  //计算偏差
 	 Integral_bias+=Bias;	                                 //求出偏差的积分
-	 if(Integral_bias>100000)Integral_bias=10000;
-	 if(Integral_bias<-100000)Integral_bias=-10000;
+	 if(Integral_bias>2000000)Integral_bias=2000000;
+	 if(Integral_bias<-2000000)Integral_bias=-2000000;
 	 Pwm=Position_KP*Bias+Position_KI/100*Integral_bias+Position_KD*(Bias-Last_Bias);       //位置式PID控制器
 	 Last_Bias=Bias;                                       //保存上一次偏差 
 	 return Pwm;                                           //增量输出
@@ -276,8 +294,8 @@ int Position_PID_B (int Encoder,int Target)
 	 static float Bias,Pwm,Integral_bias,Last_Bias;
 	 Bias=Encoder-Target;                                  //计算偏差
 	 Integral_bias+=Bias;	                                 //求出偏差的积分
-	 if(Integral_bias>100000)Integral_bias=10000;
-	 if(Integral_bias<-100000)Integral_bias=-10000;
+	 if(Integral_bias>2000000)Integral_bias=2000000;
+	 if(Integral_bias<-2000000)Integral_bias=-2000000;
 	 Pwm=Position_KP*Bias+Position_KI/100*Integral_bias+Position_KD*(Bias-Last_Bias);       //位置式PID控制器
 	 Last_Bias=Bias;                                       //保存上一次偏差 
 	 return Pwm;                                           //增量输出
@@ -287,8 +305,8 @@ int Position_PID_C (int Encoder,int Target)
 	 static float Bias,Pwm,Integral_bias,Last_Bias;
 	 Bias=Encoder-Target;                                  //计算偏差
 	 Integral_bias+=Bias;	                                 //求出偏差的积分
-	 if(Integral_bias>100000)Integral_bias=10000;
-	 if(Integral_bias<-100000)Integral_bias=-10000;
+	 if(Integral_bias>2000000)Integral_bias=2000000;
+	 if(Integral_bias<-2000000)Integral_bias=-2000000;
 	 Pwm=Position_KP*Bias+Position_KI/100*Integral_bias+Position_KD*(Bias-Last_Bias);       //位置式PID控制器
 	 Last_Bias=Bias;                                       //保存上一次偏差 
 	 return Pwm;                                           //增量输出
@@ -403,6 +421,8 @@ void CAN_N_Usart_Control(void)
 				Target_A = Position_A;
 				Target_B = Position_B;
 				Target_C = Position_C;
+			} else if (rxbuf[0]==0x88) {
+				RC_Velocity = rxbuf[1]*256+rxbuf[2];
 			}
 		}
 	}

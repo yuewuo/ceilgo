@@ -5,7 +5,7 @@ u8 Flag_Stop=1,Flag_Show=0;                 //停止标志位和 显示标志位
 int Encoder_A,Encoder_B,Encoder_C;          //编码器的脉冲计数
 long int Position_A=0,Position_B=0,Position_C=0,Rate_A,Rate_B,Rate_C; //PID控制相关变量                   
 long int Motor_A=0,Motor_B=0,Motor_C=0;        //电机PWM变量
-long int Target_A=0,Target_B=0,Target_C=0;     //电机目标值
+volatile long int Target_A=0,Target_B=0,Target_C=0;     //电机目标值
 int Voltage;                             //电池电压采样相关的变量
 float Show_Data_Mb;                      //全局显示变量，用于显示需要查看的数据                         
 u8 delay_50,delay_flag;                          //延时相关变量
@@ -14,11 +14,12 @@ u8 rxbuf[8]={0},Urxbuf[8]={0},CAN_ON_Flag=0,PS2_ON_Flag=0,Usart_ON_Flag=0,Usart_
 u8 txbuf[8]={0},txbuf2[8]={0},Turn_Flag;             //CAN发送相关变量
 float Pitch,Roll,Yaw,Move_X,Move_Y,Move_Z;   //三轴角度和XYZ轴目标速度
 u32 PID_Parameter[10],Flash_Parameter[10];  //Flash相关数组
-// float	Position_KP=40,Position_KI=0,Position_KD=40;  //位置控制PID参数
-float	Position_KP=4,Position_KI=0,Position_KD=4;
+float	Position_KP=40,Position_KI=0,Position_KD=40;  //位置控制PID参数
+// float	Position_KP=2,Position_KI=0,Position_KD=2;
 // float Velocity_KP=10,Velocity_KI=10;	          //速度控制PID参数
-float Velocity_KP=1,Velocity_KI=1;
-int RC_Velocity=45,RC_Position=3000;         //设置遥控的速度和位置值
+float Velocity_KP=0.5,Velocity_KI=0.5;
+// int RC_Velocity=45,RC_Position=3000;         //设置遥控的速度和位置值
+int RC_Velocity=100,RC_Position=60000;
 int PS2_LX,PS2_LY,PS2_RX,PS2_RY,PS2_KEY;     //
 int Gryo_Z;
 int main(void)
@@ -44,10 +45,9 @@ int main(void)
   DMP_Init();                     //=====初始化DMP 
 	// PS2_Init();									    //=====ps2驱动端口初始化
 	// PS2_SetInit();		 					    //=====ps2配置初始化,配置“红绿灯模式”，并选择是否可以修改
-	// MiniBalance_EXTI_Init();       				  //=====外部中断初始化
+	MiniBalance_EXTI_Init();       				  //=====外部中断初始化
 	// CAN1_Mode_Init(1,7,6,3,CAN_Mode_Normal);//=====CAN初始化  
 	MiniBalance_PWM_Init(8400,1);   				//=====PWM初始化
-	MiniBalance_EXTI_Init();
 	delay_ms(500);
 Usart_ON_Flag = 1;  // enable uart at boot
   while(1)

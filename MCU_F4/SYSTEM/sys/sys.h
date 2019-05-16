@@ -22,7 +22,8 @@ extern int Encoder_A,Encoder_B,Encoder_C;                    //编码器的脉�
 extern long int Motor_A,Motor_B,Motor_C;                   //电机PWM变量
 extern u8 Flag_Left,Flag_Right,Flag_sudu,Flag_Direction; //蓝牙遥控相关的变量
 extern u8 Flag_Stop,Flag_Show;                               //停止标志位和 显示标志位 默认停止 显示打开
-extern long int Target_A,Target_B,Target_C,Rate_A,Rate_B,Rate_C;                      //电机目标速度
+extern long int Rate_A,Rate_B,Rate_C;                      //电机目标速度
+extern volatile long int Target_A,Target_B,Target_C;
 extern  int Voltage,Voltage_Zheng,Voltage_Xiao;                //电池电压采样相关的变量
 extern float Angle_Balance,Gyro_Balance,Gyro_Turn;           //平衡倾角 平衡陀螺仪 转向陀螺仪
 extern float Show_Data_Mb;                                    //全局显示变量，用于显示需要查看的数据

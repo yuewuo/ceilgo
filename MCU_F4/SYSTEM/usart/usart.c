@@ -74,7 +74,7 @@ void uart_init(u32 bound){
 	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);//开启相关中断
 	//Usart NVIC 配置
   NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;//串口中断通道
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=1;//抢占优先级
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=0;//抢占优先级
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority =1;		//子优先级
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			//IRQ通道使能
 	NVIC_Init(&NVIC_InitStructure);	//根据指定的参数初始化VIC寄存器
@@ -104,11 +104,12 @@ int USART1_IRQHandler(void)
 						}
 					 if(Usart_Flag==1)
 						{	
-							Urxbuf[count]=temp;     
+							// Urxbuf[count]=temp;   
+							rxbuf[count]=temp;    
 							count++;                
 							if(count==8){
 								Usart_Flag=0;
-								CAN_N_Usart_Control();  // no preemption thus no risk
+								CAN_N_Usart_Control();  // risk
 							}
 						}
 						last_last_data=last_data;
