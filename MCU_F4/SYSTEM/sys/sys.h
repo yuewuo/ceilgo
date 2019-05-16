@@ -17,15 +17,15 @@
 #include "usartx.h"
 #include "can.h"
 #include "pstwo.h"
-#define SYSTEM_SUPPORT_OS		0		//¶¨ÒåÏµÍ³ÎÄ¼ş¼ĞÊÇ·ñÖ§³ÖUCOS
-extern int Encoder_A,Encoder_B,Encoder_C;                    //±àÂëÆ÷µÄÂö³å¼ÆÊı
-extern long int Motor_A,Motor_B,Motor_C;                   //µç»úPWM±äÁ¿
-extern u8 Flag_Left,Flag_Right,Flag_sudu,Flag_Direction; //À¶ÑÀÒ£¿ØÏà¹ØµÄ±äÁ¿
-extern u8 Flag_Stop,Flag_Show;                               //Í£Ö¹±êÖ¾Î»ºÍ ÏÔÊ¾±êÖ¾Î» Ä¬ÈÏÍ£Ö¹ ÏÔÊ¾´ò¿ª
-extern long int Target_A,Target_B,Target_C,Rate_A,Rate_B,Rate_C;                      //µç»úÄ¿±êËÙ¶È
-extern  int Voltage,Voltage_Zheng,Voltage_Xiao;                //µç³ØµçÑ¹²ÉÑùÏà¹ØµÄ±äÁ¿
-extern float Angle_Balance,Gyro_Balance,Gyro_Turn;           //Æ½ºâÇã½Ç Æ½ºâÍÓÂİÒÇ ×ªÏòÍÓÂİÒÇ
-extern float Show_Data_Mb;                                    //È«¾ÖÏÔÊ¾±äÁ¿£¬ÓÃÓÚÏÔÊ¾ĞèÒª²é¿´µÄÊı¾İ
+#define SYSTEM_SUPPORT_OS		0		//å®šä¹‰ç³»ç»Ÿæ–‡ä»¶å¤¹æ˜¯å¦æ”¯æŒUCOS
+extern int Encoder_A,Encoder_B,Encoder_C;                    //ç¼–ç å™¨çš„è„‰å†²è®¡æ•°
+extern long int Motor_A,Motor_B,Motor_C;                   //ç”µæœºPWMå˜é‡
+extern u8 Flag_Left,Flag_Right,Flag_sudu,Flag_Direction; //è“ç‰™é¥æ§ç›¸å…³çš„å˜é‡
+extern u8 Flag_Stop,Flag_Show;                               //åœæ­¢æ ‡å¿—ä½å’Œ æ˜¾ç¤ºæ ‡å¿—ä½ é»˜è®¤åœæ­¢ æ˜¾ç¤ºæ‰“å¼€
+extern long int Target_A,Target_B,Target_C,Rate_A,Rate_B,Rate_C;                      //ç”µæœºç›®æ ‡é€Ÿåº¦
+extern  int Voltage,Voltage_Zheng,Voltage_Xiao;                //ç”µæ± ç”µå‹é‡‡æ ·ç›¸å…³çš„å˜é‡
+extern float Angle_Balance,Gyro_Balance,Gyro_Turn;           //å¹³è¡¡å€¾è§’ å¹³è¡¡é™€èºä»ª è½¬å‘é™€èºä»ª
+extern float Show_Data_Mb;                                    //å…¨å±€æ˜¾ç¤ºå˜é‡ï¼Œç”¨äºæ˜¾ç¤ºéœ€è¦æŸ¥çœ‹çš„æ•°æ®
 extern u8 Bi_zhang,delay_50,delay_flag;
 extern int RC_Velocity,RC_Position;
 extern u8 Run_Flag,PID_Send,Flash_Send,Turn_Flag;
@@ -33,18 +33,20 @@ extern u8 rxbuf[8],Urxbuf[8],txbuf[8],txbuf2[8],CAN_ON_Flag,Usart_ON_Flag,Usart_
 extern float Pitch,Roll,Yaw,Move_X,Move_Y,Move_Z; 
 extern long int Position_A,Position_B,Position_C;
 extern u32 PID_Parameter[10],Flash_Parameter[10];
-extern float	Position_KP,Position_KI,Position_KD;  //Î»ÖÃ¿ØÖÆPID²ÎÊı
-extern float Velocity_KP,Velocity_KI;	                    //ËÙ¶È¿ØÖÆPID²ÎÊı
+extern float	Position_KP,Position_KI,Position_KD;  //ä½ç½®æ§åˆ¶PIDå‚æ•°
+extern float Velocity_KP,Velocity_KI;	                    //é€Ÿåº¦æ§åˆ¶PIDå‚æ•°
 extern int PS2_LX,PS2_LY,PS2_RX,PS2_RY,PS2_KEY;
 extern int Gryo_Z;		
-	 
-//Î»´ø²Ù×÷,ÊµÏÖ51ÀàËÆµÄGPIO¿ØÖÆ¹¦ÄÜ
-//¾ßÌåÊµÏÖË¼Ïë,²Î¿¼<<CM3È¨ÍşÖ¸ÄÏ>>µÚÎåÕÂ(87Ò³~92Ò³).M4Í¬M3ÀàËÆ,Ö»ÊÇ¼Ä´æÆ÷µØÖ·±äÁË.
-//IO¿Ú²Ù×÷ºê¶¨Òå
+void CAN_N_Usart_Control(void);
+void Set_Pwm(int motor_a,int motor_b,int motor_c);
+
+//ä½å¸¦æ“ä½œ,å®ç°51ç±»ä¼¼çš„GPIOæ§åˆ¶åŠŸèƒ½
+//å…·ä½“å®ç°æ€æƒ³,å‚è€ƒ<<CM3æƒå¨æŒ‡å—>>ç¬¬äº”ç« (87é¡µ~92é¡µ).M4åŒM3ç±»ä¼¼,åªæ˜¯å¯„å­˜å™¨åœ°å€å˜äº†.
+//IOå£æ“ä½œå®å®šä¹‰
 #define BITBAND(addr, bitnum) ((addr & 0xF0000000)+0x2000000+((addr &0xFFFFF)<<5)+(bitnum<<2)) 
 #define MEM_ADDR(addr)  *((volatile unsigned long  *)(addr)) 
 #define BIT_ADDR(addr, bitnum)   MEM_ADDR(BITBAND(addr, bitnum)) 
-//IO¿ÚµØÖ·Ó³Éä
+//IOå£åœ°å€æ˜ å°„
 #define GPIOA_ODR_Addr    (GPIOA_BASE+20) //0x40020014
 #define GPIOB_ODR_Addr    (GPIOB_BASE+20) //0x40020414 
 #define GPIOC_ODR_Addr    (GPIOC_BASE+20) //0x40020814 
@@ -65,40 +67,40 @@ extern int Gryo_Z;
 #define GPIOH_IDR_Addr    (GPIOH_BASE+16) //0x40021C10 
 #define GPIOI_IDR_Addr    (GPIOI_BASE+16) //0x40022010 
 // 
-//IO¿Ú²Ù×÷,Ö»¶Ôµ¥Ò»µÄIO¿Ú!
-//È·±£nµÄÖµĞ¡ÓÚ16!
-#define PAout(n)   BIT_ADDR(GPIOA_ODR_Addr,n)  //Êä³ö 
-#define PAin(n)    BIT_ADDR(GPIOA_IDR_Addr,n)  //ÊäÈë 
+//IOå£æ“ä½œ,åªå¯¹å•ä¸€çš„IOå£!
+//ç¡®ä¿nçš„å€¼å°äº16!
+#define PAout(n)   BIT_ADDR(GPIOA_ODR_Addr,n)  //è¾“å‡º 
+#define PAin(n)    BIT_ADDR(GPIOA_IDR_Addr,n)  //è¾“å…¥ 
 
-#define PBout(n)   BIT_ADDR(GPIOB_ODR_Addr,n)  //Êä³ö 
-#define PBin(n)    BIT_ADDR(GPIOB_IDR_Addr,n)  //ÊäÈë 
+#define PBout(n)   BIT_ADDR(GPIOB_ODR_Addr,n)  //è¾“å‡º 
+#define PBin(n)    BIT_ADDR(GPIOB_IDR_Addr,n)  //è¾“å…¥ 
 
-#define PCout(n)   BIT_ADDR(GPIOC_ODR_Addr,n)  //Êä³ö 
-#define PCin(n)    BIT_ADDR(GPIOC_IDR_Addr,n)  //ÊäÈë 
+#define PCout(n)   BIT_ADDR(GPIOC_ODR_Addr,n)  //è¾“å‡º 
+#define PCin(n)    BIT_ADDR(GPIOC_IDR_Addr,n)  //è¾“å…¥ 
 
-#define PDout(n)   BIT_ADDR(GPIOD_ODR_Addr,n)  //Êä³ö 
-#define PDin(n)    BIT_ADDR(GPIOD_IDR_Addr,n)  //ÊäÈë 
+#define PDout(n)   BIT_ADDR(GPIOD_ODR_Addr,n)  //è¾“å‡º 
+#define PDin(n)    BIT_ADDR(GPIOD_IDR_Addr,n)  //è¾“å…¥ 
 
-#define PEout(n)   BIT_ADDR(GPIOE_ODR_Addr,n)  //Êä³ö 
-#define PEin(n)    BIT_ADDR(GPIOE_IDR_Addr,n)  //ÊäÈë
+#define PEout(n)   BIT_ADDR(GPIOE_ODR_Addr,n)  //è¾“å‡º 
+#define PEin(n)    BIT_ADDR(GPIOE_IDR_Addr,n)  //è¾“å…¥
 
-#define PFout(n)   BIT_ADDR(GPIOF_ODR_Addr,n)  //Êä³ö 
-#define PFin(n)    BIT_ADDR(GPIOF_IDR_Addr,n)  //ÊäÈë
+#define PFout(n)   BIT_ADDR(GPIOF_ODR_Addr,n)  //è¾“å‡º 
+#define PFin(n)    BIT_ADDR(GPIOF_IDR_Addr,n)  //è¾“å…¥
 
-#define PGout(n)   BIT_ADDR(GPIOG_ODR_Addr,n)  //Êä³ö 
-#define PGin(n)    BIT_ADDR(GPIOG_IDR_Addr,n)  //ÊäÈë
+#define PGout(n)   BIT_ADDR(GPIOG_ODR_Addr,n)  //è¾“å‡º 
+#define PGin(n)    BIT_ADDR(GPIOG_IDR_Addr,n)  //è¾“å…¥
 
-#define PHout(n)   BIT_ADDR(GPIOH_ODR_Addr,n)  //Êä³ö 
-#define PHin(n)    BIT_ADDR(GPIOH_IDR_Addr,n)  //ÊäÈë
+#define PHout(n)   BIT_ADDR(GPIOH_ODR_Addr,n)  //è¾“å‡º 
+#define PHin(n)    BIT_ADDR(GPIOH_IDR_Addr,n)  //è¾“å…¥
 
-#define PIout(n)   BIT_ADDR(GPIOI_ODR_Addr,n)  //Êä³ö 
-#define PIin(n)    BIT_ADDR(GPIOI_IDR_Addr,n)  //ÊäÈë
+#define PIout(n)   BIT_ADDR(GPIOI_ODR_Addr,n)  //è¾“å‡º 
+#define PIin(n)    BIT_ADDR(GPIOI_IDR_Addr,n)  //è¾“å…¥
 
-//ÒÔÏÂÎª»ã±àº¯Êı
-void WFI_SET(void);		//Ö´ĞĞWFIÖ¸Áî
-void INTX_DISABLE(void);//¹Ø±ÕËùÓĞÖĞ¶Ï
-void INTX_ENABLE(void);	//¿ªÆôËùÓĞÖĞ¶Ï
-void MSR_MSP(u32 addr);	//ÉèÖÃ¶ÑÕ»µØÖ· 
+//ä»¥ä¸‹ä¸ºæ±‡ç¼–å‡½æ•°
+void WFI_SET(void);		//æ‰§è¡ŒWFIæŒ‡ä»¤
+void INTX_DISABLE(void);//å…³é—­æ‰€æœ‰ä¸­æ–­
+void INTX_ENABLE(void);	//å¼€å¯æ‰€æœ‰ä¸­æ–­
+void MSR_MSP(u32 addr);	//è®¾ç½®å †æ ˆåœ°å€ 
 #include "inv_mpu.h"
 #include "inv_mpu_dmp_motion_driver.h"
 #include "dmpKey.h"

@@ -22,6 +22,7 @@ struct LdsCar {
 	int __send_ctrl_8byte(const unsigned char* data);  // will add 0xff and 0xfe at head
 // immediate motion control
 	void stop();
+	void move(int A, int B, int C);
 };
 
 #ifdef LDSCAR_IMPLEMENTATION
@@ -66,7 +67,12 @@ int LdsCar::__send_ctrl_8byte(const unsigned char* data) {
 }
 
 void LdsCar::stop() {
-	const unsigned char msg[8] = {1, 0, 0, 0, 0, 0, 0, 0};
+	const unsigned char msg[8] = {0x77, 0, 0, 0, 0, 0, 0, 0};
+	__send_ctrl_8byte(msg);
+}
+
+void LdsCar::move(int A, int B, int C) {
+	const unsigned char msg[8] = {0x66, (A>>8)&0xFF, A&0xFF, (B>>8)&0xFF, B&0xFF, (C>>8)&0xFF, C&0xFF, 0};
 	__send_ctrl_8byte(msg);
 }
 

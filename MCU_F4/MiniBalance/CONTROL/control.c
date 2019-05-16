@@ -57,27 +57,33 @@ int EXTI15_10_IRQHandler(void)
 			  	Key();//扫描按键变化	
 			return 0;	                                               
 			}                                                                   //===10ms控制一次，为了保证M法测速的时间基准，首先读取编码器数据
-			Encoder_A=Read_Encoder(2)/20;                                          //===读取编码器的值
+			// Encoder_A=Read_Encoder(2)/20;                                          //===读取编码器的值
+			Encoder_A=Read_Encoder(2);
 			Position_A+=Encoder_A;                                              //===积分得到速度   
-			Encoder_B=Read_Encoder(3)/20;                                          //===读取编码器的值
+			// Encoder_B=Read_Encoder(3)/20;                                          //===读取编码器的值
+			Encoder_B=Read_Encoder(3);
 			Position_B+=Encoder_B;                                              //===积分得到速度   
-			Encoder_C=Read_Encoder(4)/20;                                          //===读取编码器的值
+			// Encoder_C=Read_Encoder(4)/20;                                          //===读取编码器的值
+			Encoder_C=Read_Encoder(4);
 			Position_C+=Encoder_C;                                              //===积分得到速度   
 	  	Read_DMP();                                                         //===更新姿态	
   		Led_Flash(100);                                                     //===LED闪烁;常规模式 1s改变一次指示灯的状态	
 			Voltage_All+=Get_battery_volt();                                    //多次采样累积
 			if(++Voltage_Count==100) Voltage=Voltage_All/100,Voltage_All=0,Voltage_Count=0;//求平均值 获取电池电压	   
       if(PS2_KEY==4)PS2_ON_Flag=1,CAN_ON_Flag=0,Usart_ON_Flag=0;						
-		  if(CAN_ON_Flag==1||Usart_ON_Flag==1||PS2_ON_Flag==1) CAN_N_Usart_Control();       //接到串口或者CAN遥控解锁指令之后，使能CAN和串口控制输入
+		  // if(CAN_ON_Flag==1||Usart_ON_Flag==1||PS2_ON_Flag==1) CAN_N_Usart_Control();       //接到串口或者CAN遥控解锁指令之后，使能CAN和串口控制输入
 			if(RC_Velocity>0&&RC_Velocity<25)  RC_Velocity=25;                //避免电机进入低速非线性区
 		  if(Turn_Off(Voltage)==0)               //===如果电池电压不存在异常
 		 { 			 
 		  if(Run_Flag==0)//速度模式
 			{		
 				if(CAN_ON_Flag==0&&Usart_ON_Flag==0&&PS2_ON_Flag==0)  Get_RC(Run_Flag);   //===串口和CAN控制都未使能，则接收蓝牙遥控指
-				Motor_A=Incremental_PI_A(Encoder_A,Target_A);                        			//===速度闭环控制计算电机A最终PWM
-				Motor_B=Incremental_PI_B(Encoder_B,Target_B);                         		//===速度闭环控制计算电机B最终PWM
-				Motor_C=Incremental_PI_C(Encoder_C,Target_C);                         		//===速度闭环控制计算电机C最终PWM
+				// Motor_A=Incremental_PI_A(Encoder_A,Target_A);                        			//===速度闭环控制计算电机A最终PWM
+				Motor_A=Incremental_PI_A(Encoder_A,Target_A*20);
+				// Motor_B=Incremental_PI_B(Encoder_B,Target_B);                         		//===速度闭环控制计算电机B最终PWM
+				Motor_B=Incremental_PI_B(Encoder_B,Target_B*20);
+				// Motor_C=Incremental_PI_C(Encoder_C,Target_C);                         		//===速度闭环控制计算电机C最终PWM
+				Motor_C=Incremental_PI_C(Encoder_C,Target_C*20);
 			}
 			 else//位置模式
 			{
@@ -101,6 +107,7 @@ int EXTI15_10_IRQHandler(void)
 			 Xianfu_Pwm(6900);                     											//===PWM限幅
 			 Set_Pwm(Motor_A*84/72,Motor_B*84/72,Motor_C*84/72);     		//===赋值给PWM寄存器  
 		 }
+		// printf("A: %d, B: %d, C: %d\n", Motor_A, Motor_B, Motor_C);
  }
 	 return 0;	 
 } 
@@ -113,6 +120,7 @@ int EXTI15_10_IRQHandler(void)
 **************************************************************************/
 void Set_Pwm(int motor_a,int motor_b,int motor_c)
 {
+	printf("A: %d, B: %d, C: %d\n", motor_a, motor_b, motor_c);
 	    int siqu=0;
     	if(motor_a>0)			PWMA=motor_a+siqu, INA=0;
 			else  	            PWMA=7200+motor_a-siqu,INA=1;
@@ -373,20 +381,31 @@ void Count_Velocity(void)
 void CAN_N_Usart_Control(void)
 {
   int flag_X, flag_Y,flag_Z;
-		 int Yuzhi=20;
-	 int LX,LY,RX;
-	 if(CAN_ON_Flag==1||Usart_ON_Flag==1) 
-	 {
-	 if((rxbuf[7]&0x04)==0)flag_X=1;  else flag_X=-1;  //方向控制位
-	 if((rxbuf[7]&0x02)==0)flag_Y=1;  else flag_Y=-1;  //方向控制位
-	 if((rxbuf[7]&0x01)==0)flag_Z=1;  else flag_Z=-1;  //方向控制位
-	 Move_X=flag_X*(rxbuf[1]*256+rxbuf[2]);
-	 Move_Y=flag_Y*(rxbuf[3]*256+rxbuf[4]);	
-	 Move_Z=flag_Z*(rxbuf[5]*256+rxbuf[6]);	
-	
-   if(rxbuf[0]==1)Kinematic_Analysis(Move_X,Move_Y,Move_Z),Gyro_K=0;    //进行运动学分析
-	 if(rxbuf[0]==2)Target_A=Move_X,Target_B=Move_Y,Target_C=Move_Z;      //单独对每个电机进行控制
-	 }
+	int Yuzhi=20;
+	int LX,LY,RX;
+	if(CAN_ON_Flag==1||Usart_ON_Flag==1) {
+		if((rxbuf[7]&0x04)==0)flag_X=1;  else flag_X=-1;  //方向控制位
+		if((rxbuf[7]&0x02)==0)flag_Y=1;  else flag_Y=-1;  //方向控制位
+		if((rxbuf[7]&0x01)==0)flag_Z=1;  else flag_Z=-1;  //方向控制位
+		Move_X=flag_X*(rxbuf[1]*256+rxbuf[2]);
+		Move_Y=flag_Y*(rxbuf[3]*256+rxbuf[4]);	
+		Move_Z=flag_Z*(rxbuf[5]*256+rxbuf[6]);	
+
+		if(rxbuf[0]==1)Kinematic_Analysis(Move_X,Move_Y,Move_Z),Gyro_K=0;    //进行运动学分析
+		else if(rxbuf[0]==2)Target_A=Move_X,Target_B=Move_Y,Target_C=Move_Z;      //单独对每个电机进行控制
+
+		if (Run_Flag == 1) {  // special position mode
+			if (rxbuf[0]==0x66) {
+				Target_A += (short)(rxbuf[1]*256+rxbuf[2]);
+				Target_B += (short)(rxbuf[3]*256+rxbuf[4]);
+				Target_C += (short)(rxbuf[5]*256+rxbuf[6]);
+			} else if (rxbuf[0]==0x77) {
+				Target_A = Position_A;
+				Target_B = Position_B;
+				Target_C = Position_C;
+			}
+		}
+	}
 	  else if (PS2_ON_Flag==1)
 	{
 	    LX=PS2_LX-128;

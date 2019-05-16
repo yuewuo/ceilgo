@@ -10,7 +10,7 @@ int main(int argc, char** argv) {
 	}
 
 	ldscar.open(argv[1]);
-
+	ldscar.move(30000, 0, 0);
 	ldscar.close();
 
 }
