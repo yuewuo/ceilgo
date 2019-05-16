@@ -1,0 +1,6 @@
+.vscode
+build
+
+MCU_F4/OBJ
+MCU_F4/USER/DebugConfig
+MCU_F4/USER/RTE
