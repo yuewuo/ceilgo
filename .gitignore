@@ -4,3 +4,5 @@ build
 MCU_F4/OBJ
 MCU_F4/USER/DebugConfig
 MCU_F4/USER/RTE
+MCU_F4/USER/Minibalance.map
+MCU_F4/USER/Minibalance.uvguix.37754
