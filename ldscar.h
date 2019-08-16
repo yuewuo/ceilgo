@@ -24,6 +24,8 @@ struct LdsCar {
 	void stop();
 	void move(int A, int B, int C);
 	void setMaxSpeed(unsigned int speed);  // default is 100
+	void pause();  // pause PID engine and PWM output
+	void resume();  // resume PID engine and PWM output
 };
 
 #ifdef LDSCAR_IMPLEMENTATION
@@ -83,6 +85,16 @@ void LdsCar::move(int A, int B, int C) {
 void LdsCar::setMaxSpeed(unsigned int speed) {
 	assert(speed <= 1000 && "speed too large, may slipper");
 	const unsigned char msg[8] = {0x88, a2u8(speed>>8), a2u8(speed), 0, 0, 0, 0, 0};
+	__send_ctrl_8byte(msg);
+}
+
+void LdsCar::pause() {
+	const unsigned char msg[8] = {0xA0, 0, 0, 0, 0, 0, 0, 0};
+	__send_ctrl_8byte(msg);
+}
+
+void LdsCar::resume() {
+	const unsigned char msg[8] = {0xA1, 0, 0, 0, 0, 0, 0, 0};
 	__send_ctrl_8byte(msg);
 }
 

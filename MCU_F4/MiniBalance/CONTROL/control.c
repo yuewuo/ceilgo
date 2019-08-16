@@ -10,6 +10,7 @@ u8 temp1;                                               //临时变量
 float Voltage_Count,Voltage_All;  //电压采样相关变量
 float Gyro_K=0.004;       //陀螺仪比例系数
 int j;
+u8 pause_any_control=0;
 #define X_PARAMETER          (0.5f)               
 #define Y_PARAMETER           (sqrt(3)/2.f)      
 #define L_PARAMETER            (1.0f)  
@@ -42,21 +43,26 @@ void Kinematic_Analysis2(float Vx,float Vy,float Vz)
 **************************************************************************/
 int EXTI15_10_IRQHandler(void) 
 {    
-	 if(INT==0)		
-	{     
-		  EXTI->PR=1<<15;                                                      //清除LINE5上的中断标志位  		
-		  Flag_Target=!Flag_Target;
-		  if(delay_flag==1)
-			 {
-				 if(++delay_50==10)	 delay_50=0,delay_flag=0;                     //给主函数提供50ms的精准延时
-			 }
-		  if(Flag_Target==1)                                                  //5ms读取一次陀螺仪和加速度计的值
-			{
-					// if(Usart_Flag==0&&PS2_ON_Flag==0&&Usart_ON_Flag==1)  memcpy(rxbuf,Urxbuf,8*sizeof(u8));	//如果解锁了串口控制标志位，进入串口控制模式
-					Read_DMP();                                                           //===更新姿态		
-			  	Key();//扫描按键变化	
+	if(INT==0) {     
+		EXTI->PR=1<<15;                                                      //清除LINE5上的中断标志位  		
+		Flag_Target=!Flag_Target;
+		if(delay_flag==1) {
+			if(++delay_50==10) delay_50=0,delay_flag=0;                      //给主函数提供50ms的精准延时
+		}
+		if(Flag_Target==1) {                                                 //5ms读取一次陀螺仪和加速度计的值
+			// if(Usart_Flag==0&&PS2_ON_Flag==0&&Usart_ON_Flag==1)  memcpy(rxbuf,Urxbuf,8*sizeof(u8));	//如果解锁了串口控制标志位，进入串口控制模式
+			Read_DMP();                                                           //===更新姿态		
+			Key();//扫描按键变化	
 			return 0;	                                               
-			}                                                                   //===10ms控制一次，为了保证M法测速的时间基准，首先读取编码器数据
+		}                                                                   //===10ms控制一次，为了保证M法测速的时间基准，首先读取编码器数据
+		
+		// wuyuepku added 190816, to stop car adjusting itself
+		if (pause_any_control) {
+			Read_Encoder(2);  // clear the timer
+			Read_Encoder(3);
+			Read_Encoder(4);
+			Set_Pwm(0,0,0);
+		} else {
 			// Encoder_A=Read_Encoder(2)/20;                                          //===读取编码器的值
 			Encoder_A=Read_Encoder(2);
 			Position_A+=Encoder_A;                                              //===积分得到速度   
@@ -66,33 +72,28 @@ int EXTI15_10_IRQHandler(void)
 			// Encoder_C=Read_Encoder(4)/20;                                          //===读取编码器的值
 			Encoder_C=Read_Encoder(4);
 			Position_C+=Encoder_C;                                              //===积分得到速度   
-	  	Read_DMP();                                                         //===更新姿态	
-  		Led_Flash(100);                                                     //===LED闪烁;常规模式 1s改变一次指示灯的状态	
+			Read_DMP();                                                         //===更新姿态	
+			Led_Flash(100);                                                     //===LED闪烁;常规模式 1s改变一次指示灯的状态	
 			Voltage_All+=Get_battery_volt();                                    //多次采样累积
 			if(++Voltage_Count==100) Voltage=Voltage_All/100,Voltage_All=0,Voltage_Count=0;//求平均值 获取电池电压	   
-      if(PS2_KEY==4)PS2_ON_Flag=1,CAN_ON_Flag=0,Usart_ON_Flag=0;						
-		  // if(CAN_ON_Flag==1||Usart_ON_Flag==1||PS2_ON_Flag==1) CAN_N_Usart_Control();       //接到串口或者CAN遥控解锁指令之后，使能CAN和串口控制输入
+			if(PS2_KEY==4) PS2_ON_Flag=1,CAN_ON_Flag=0,Usart_ON_Flag=0;						
+			// if(CAN_ON_Flag==1||Usart_ON_Flag==1||PS2_ON_Flag==1) CAN_N_Usart_Control();       //接到串口或者CAN遥控解锁指令之后，使能CAN和串口控制输入
 			// if(RC_Velocity>0&&RC_Velocity<25)  RC_Velocity=25;                //避免电机进入低速非线性区
-			if(RC_Velocity<25)  RC_Velocity=25;
-		  if(Turn_Off(Voltage)==0)               //===如果电池电压不存在异常
-		 { 			 
-		  if(Run_Flag==0)//速度模式
-			{		
-				if(CAN_ON_Flag==0&&Usart_ON_Flag==0&&PS2_ON_Flag==0)  Get_RC(Run_Flag);   //===串口和CAN控制都未使能，则接收蓝牙遥控指
-				// Motor_A=Incremental_PI_A(Encoder_A,Target_A);                        			//===速度闭环控制计算电机A最终PWM
-				Motor_A=Incremental_PI_A(Encoder_A,Target_A);
-				// Motor_B=Incremental_PI_B(Encoder_B,Target_B);                         		//===速度闭环控制计算电机B最终PWM
-				Motor_B=Incremental_PI_B(Encoder_B,Target_B);
-				// Motor_C=Incremental_PI_C(Encoder_C,Target_C);                         		//===速度闭环控制计算电机C最终PWM
-				Motor_C=Incremental_PI_C(Encoder_C,Target_C);
-			}
-			 else//位置模式
-			{
-					if(CAN_ON_Flag==0&&Usart_ON_Flag==0&&PS2_ON_Flag==0)//===串口和CAN控制都未使能，则接收蓝牙遥控指令
-					 {	
+			if(RC_Velocity<25) RC_Velocity=25;
+			if(Turn_Off(Voltage)==0) {               //===如果电池电压不存在异常
+				if(Run_Flag==0) {					//速度模式
+					if(CAN_ON_Flag==0&&Usart_ON_Flag==0&&PS2_ON_Flag==0) Get_RC(Run_Flag);   //===串口和CAN控制都未使能，则接收蓝牙遥控指
+					// Motor_A=Incremental_PI_A(Encoder_A,Target_A);                        			//===速度闭环控制计算电机A最终PWM
+					Motor_A=Incremental_PI_A(Encoder_A,Target_A);
+					// Motor_B=Incremental_PI_B(Encoder_B,Target_B);                         		//===速度闭环控制计算电机B最终PWM
+					Motor_B=Incremental_PI_B(Encoder_B,Target_B);
+					// Motor_C=Incremental_PI_C(Encoder_C,Target_C);                         		//===速度闭环控制计算电机C最终PWM
+					Motor_C=Incremental_PI_C(Encoder_C,Target_C);
+				} else {//位置模式
+					if(CAN_ON_Flag==0&&Usart_ON_Flag==0&&PS2_ON_Flag==0) {							//===串口和CAN控制都未使能，则接收蓝牙遥控指令
 						if(Turn_Flag==0) 	Flag_Direction=click_RC();     
 						Get_RC(Run_Flag);
-					 }
+					}
 					Motor_A=Position_PID_A(Position_A,Target_A)>>8;//位置闭环控制，计算电机A速度内环的输入量
 					Motor_B=Position_PID_B(Position_B,Target_B)>>8;//位置闭环控制，计算电机B速度内环的输入量
 					Motor_C=Position_PID_C(Position_C,Target_C)>>8;//位置闭环控制，计算电机C速度内环的输入量
@@ -106,13 +107,14 @@ int EXTI15_10_IRQHandler(void)
 					Motor_A=Incremental_PI_A(Encoder_A,-Motor_A);         //===速度闭环控制计算电机A最终PWM
 					Motor_B=Incremental_PI_B(Encoder_B,-Motor_B);         //===速度闭环控制计算电机B最终PWM
 					Motor_C=Incremental_PI_C(Encoder_C,-Motor_C);         //===速度闭环控制计算电机C最终PWM
-			 }	 
-			 Xianfu_Pwm(7199);                     											//===PWM限幅
-			 Set_Pwm(Motor_A*84/72,Motor_B*84/72,Motor_C*84/72);     		//===赋值给PWM寄存器  
-		 }
-		// printf("A: %d, B: %d, C: %d\n", Motor_A, Motor_B, Motor_C);
- }
-	 return 0;	 
+				}
+				Xianfu_Pwm(7199);                     											//===PWM限幅
+				Set_Pwm(Motor_A*84/72,Motor_B*84/72,Motor_C*84/72);     		//===赋值给PWM寄存器  
+			}
+			// printf("A: %d, B: %d, C: %d\n", Motor_A, Motor_B, Motor_C);
+		}
+	}
+	return 0;	 
 } 
 
 
@@ -423,6 +425,10 @@ void CAN_N_Usart_Control(void)
 				Target_C = Position_C;
 			} else if (rxbuf[0]==0x88) {
 				RC_Velocity = rxbuf[1]*256+rxbuf[2];
+			} else if (rxbuf[0]==0xA0) {  // pause car control, means not run PID engine nor output any PWM signal
+				pause_any_control = 1;
+			} else if (rxbuf[0]==0xA1) {  // resume car control
+				pause_any_control = 0;
 			}
 		}
 	}
